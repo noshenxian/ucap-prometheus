@@ -1,0 +1,14 @@
+version: "3"
+
+volumes:
+  blackbox_data: {}
+
+services:
+  blackbox-exporter:
+    image: prom/blackbox-exporter:master
+    ports:
+      - 9115:9115
+    volumes:
+      - ./config:/config
+    command:
+      - '--config.file=/config/blackbox.yml'
