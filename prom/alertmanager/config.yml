@@ -1,0 +1,41 @@
+global:
+  resolve_timeout: 5m
+  #邮件
+  smtp_smarthost: 'mail.ucap.com.cn:465'
+  smtp_from: '***'
+  smtp_auth_username: '****'
+  smtp_auth_password: '****' #邮箱的授权密码或登录密码
+  smtp_require_tls: false
+
+#定义模板信息
+templates:
+  - '/config/alertmanager/template/*.tmpl'
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 5m
+  receiver: 'dingding_ops'
+  routes:
+#  - receiver: 'dingding_group'
+#    group_wait: 10s
+#    group_interval: 10s
+#    repeat_interval: 3m
+#    match_re:
+#      severity: 'error'
+
+receivers:
+  - name: 'dingding_ops'
+    webhook_configs:
+    - url: 'http://192.168.199.201:8060/dingtalk/webhook1/send'
+      send_resolved: true #发送已解决通知
+      #message: '{{ template "dingding_alert.html" . }}'
+
+#告警抑制
+inhibit_rules:
+  - source_match:
+      alertname: 'critical'
+    target_match:
+      alertname: 'warning'
+    equal: ['job']

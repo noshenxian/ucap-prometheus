@@ -1,0 +1,111 @@
+groups:
+- name: Domain
+  rules:
+  - alert: 站点可用性
+    expr: probe_success == 0
+    for: 1m
+    labels:
+      alertype: domain
+      severity: critical
+    annotations:
+      description: "{{$labels.env}}_{{ $labels.name }}({{ $labels.project }})：站点无法访问\n> {{ $labels.instance }}"
+
+  - alert: 站点1h可用性低于80%
+    expr: sum_over_time(probe_success[1h])/count_over_time(probe_success[1h]) * 100 < 80
+    for: 3m
+    labels:
+      alertype: domain
+      severity: warning
+    annotations:
+      description: "{{$labels.env}}_{{ $labels.name }}({{ $labels.project }})：站点1h可用性：{{ $value | humanize }}%\n> {{ $labels.instance }}"
+
+  - alert: 站点状态异常
+    expr: (probe_success == 0 and probe_http_status_code > 499) or probe_http_status_code == 0
+    for: 1m
+    labels:
+      alertype: domain
+      severity: warning
+    annotations:
+      description: "{{$labels.env}}_{{ $labels.name }}({{ $labels.project }})：站点状态异常：{{$value}}\n> {{ $labels.instance }}"
+
+  - alert: 站点耗时过高
+    expr: probe_duration_seconds > 0.5
+    for: 2m
+    labels:
+      alertype: domain
+      severity: warning
+    annotations:
+      description: "{{$labels.env}}_{{ $labels.name }}({{ $labels.project }})：当前站点耗时：{{$value | humanize}}s\n> {{ $labels.instance }}"
+
+  - alert: SSL证书有效期
+    expr: (probe_ssl_earliest_cert_expiry-time()) / 3600 / 24 < 15
+    for: 2m
+    labels:
+      alertype: domain
+      severity: warning
+    annotations:
+      description: "{{$labels.env}}_{{ $labels.name }}({{ $labels.project }})：证书有效期剩余{{ $value | humanize }}天\n> {{ $labels.instance }}"
+
+- name: HostStatsAlert
+  rules:
+  - alert: "主机连通性告警"
+    expr: probe_success{type="icmp"} == 0
+    for: 3m
+    labels:
+      severity: fatal,warning
+    annotations:
+      value: "实例网络不可达 {{ $value }}"
+  - alert: "CPU告警"
+    expr: round(sum(avg without (cpu)(irate(node_cpu_seconds_total{mode!='idle'}[5m]))) by (cluster,job,env,export,instance) * 100,5) > 85
+    for: 20m
+    labels:
+      severity: warning
+      level: 3
+    annotations:
+      value: "实例CPU占用 {{ $value }}%"
+  - alert: "内存告警"
+    expr: round(((node_memory_MemTotal_bytes{job!="dev3"} - node_memory_MemFree_bytes - node_memory_Buffers_bytes - node_memory_Cached_bytes) / (node_memory_MemTotal_bytes{endpoint!="https"}) ) * 100 ,0.5) > 90
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      value: "实例内存占用 {{ $value }}%"
+
+- name: Windows
+  rules:
+  - alert: win_CPU使用率
+    expr: 100 - (avg by (instance,A02_iname,intip,A05_ienv,A01_iaccount) (irate(wmi_cpu_time_total{mode="idle"}[2m])) * 100) > 80
+    for: 2m
+    labels:
+      alertype: win
+      severity: warning
+    annotations:
+      description: "{{ $labels.A02_iname }}_{{$labels.intip}}：CPU使用率达到{{ $value | humanize }}%\n> {{ $labels.A01_iaccount}}-{{ $labels.A05_ienv }}"
+
+  - alert: win_内存使用率
+    expr: 100.0 - 100 * wmi_os_physical_memory_free_bytes / wmi_cs_physical_memory_bytes > 85
+    for: 2m
+    labels:
+      alertype: win
+      severity: warning
+    annotations:
+      description: "{{ $labels.A02_iname }}_{{$labels.intip}}：内存使用率达到{{ $value | humanize }}%\n> {{ $labels.A01_iaccount}}-{{ $labels.A05_ienv }}"
+
+  - alert: win_磁盘使用率
+    expr: 100.0 - 100 * ((wmi_logical_disk_free_bytes{} / 1024 / 1024 ) / (wmi_logical_disk_size_bytes{}  / 1024 / 1024)) > 80
+    for: 2m
+    labels:
+      alertype: win
+      severity: warning
+    annotations:
+      description: "{{ $labels.A02_iname }}_{{$labels.intip}}_{{$labels.volume}}：使用率达到{{ $value | humanize }}%\n> {{ $labels.A01_iaccount}}-{{ $labels.A05_ienv }}"
+
+  - alert: win_采集器状态
+    expr: wmi_exporter_collector_success == 0
+    for: 2m
+    labels:
+      alertype: win
+      severity: critical
+    annotations:
+      description: "{{ $labels.A02_iname }}_{{$labels.intip}}_{{ $labels.collector }}：异常\n> {{ $labels.A01_iaccount}}-{{ $labels.A05_ienv }}"
+

@@ -1,0 +1,25 @@
+modules:
+  http_2xx:
+    prober: http
+    http:
+      valid_status_codes:
+      - 200
+      - 301
+      - 302
+      - 303
+      no_follow_redirects: true
+      preferred_ip_protocol: ip4
+      ip_protocol_fallback: false
+
+  http_4xx:
+    prober: http
+    http:
+      valid_status_codes:
+      - 401
+      - 403
+      - 404
+      preferred_ip_protocol: ip4
+      ip_protocol_fallback: false
+
+  tcp_connect:
+    prober: tcp
